@@ -1,0 +1,19 @@
+[package]
+name = "hws"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+resolver = "3"
+members = ["crates/sim", "crates/parts", "crates/isa", "crates/acc", "crates/drv"]
+
+[workspace.dependencies]
+hws-sim = { path = "crates/sim" }
+hws-parts = { path = "crates/parts" }
+hws-isa = { path = "crates/isa" }
+hws-acc = { path = "crates/acc" }
+hws-drv = { path = "crates/drv" }
+
+[dependencies]
+hws-acc.workspace = true
+hws-drv.workspace = true

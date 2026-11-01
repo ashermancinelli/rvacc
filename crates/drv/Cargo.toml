@@ -1,0 +1,7 @@
+[package]
+name = "hws-drv"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hws-acc.workspace = true
