@@ -15,7 +15,8 @@ and device DRAM. No simulated host CPU or game mechanics.
 | `drv` | Host buffers, transfers, launches, completion handles, toolchain helper | `acc` |
 | Root CLI | Experiments and result checking | `acc`, `drv` |
 
-The crates are empty; the CLI retains its original greeting. Keep dependencies
+`sim` has the event core and tests; the other crates are empty. The CLI retains
+its original greeting. Keep dependencies
 private to their consumers; no async runtime or thread per component.
 
 ## Execution
@@ -123,7 +124,7 @@ Loading prebuilt bytes must work without an installed toolchain.
 
 ## Build next
 
-1. Event scheduler and routing.
+1. Event scheduler and routing (implemented in `sim`).
 2. SRAM/DRAM timing, then driver upload/download.
 3. DMA plus generation-aware barriers.
 4. One in-order context using our instruction enum, then matrix execution.
@@ -136,4 +137,33 @@ backpressure, context isolation/fairness/wakeup, decoding, and matrix results.
 Include a manually calculated timing example. Run `cargo test --workspace`,
 `cargo fmt --all -- --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 Expose cycles, bytes, utilization, and stall reasons; optional event traces can
-feed later visualizations. No implementation changes accompany this plan.
+feed later visualizations.
+
+## Event core contract
+
+`sim::Simulator<M>` owns components, routes, and an event queue. Messages need no
+ordering traits. Component IDs belong to one simulator; components define their
+own port numbers. Each output port connects to one destination endpoint with a
+fixed transport latency. Invalid component IDs and duplicate connections fail.
+
+Handlers receive the cycle, input port, and message, then return outgoing effects.
+Delivery occurs at `current cycle + effect delay + transport latency`, using
+checked arithmetic. Effects retain their returned order. Validate the whole batch
+before queuing any effect. Handlers cannot call or mutate other components through
+the simulator API.
+
+Zero-delay delivery is allowed. New events follow events already queued at the
+same cycle. Every `run(event_budget)` call is bounded by event count, including
+same-cycle events. Budget exhaustion preserves the queue and can be resumed;
+calling `run(0)` does not advance time. An empty queue means completion if every
+component reports idle, otherwise deadlock. Components must report pending work
+through `is_idle`. External event injection can resume a deadlock.
+
+Handler errors, missing output routes, and overflow during dispatch are terminal
+failures. Component state is not rolled back. Invalid external scheduling requests
+return errors without changing the queue. External scheduling uses absolute cycles
+and rejects cycles before the current cycle.
+
+The mock-memory test starts at cycle 5: request transport takes 2 cycles, memory
+access takes 7, and response transport takes 3. The response arrives at cycle 17.
+It also checks that pausing and resuming preserves this result.

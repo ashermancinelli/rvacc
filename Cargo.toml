@@ -6,6 +6,7 @@ edition = "2024"
 [workspace]
 resolver = "3"
 members = ["crates/sim", "crates/parts", "crates/isa", "crates/acc", "crates/drv"]
+default-members = [".", "crates/*"]
 
 [workspace.dependencies]
 hws-sim = { path = "crates/sim" }
